@@ -58,6 +58,7 @@ class SSH(BaseSSH):
             watchers = self.watchers
 
         kwargs.setdefault("hide", True)
+        kwargs.setdefault("warn", True)
         kwargs.setdefault("echo", False)
         res = self.conn.run(cmd, pty=True, watchers=watchers, **kwargs)
         return self.append_buffer(res.stdout)
