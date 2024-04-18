@@ -40,7 +40,7 @@ class SSH(BaseSSH):
         self.transport = paramiko.Transport((host or self.host, port or self.port))
         self.transport.set_keepalive(kwargs.get("keep_alive", 30))
         self.transport.connect(
-            username=kwargs.get("user") or self.user,
+            username=kwargs.get("user") or self.user,  # type: ignore
             password=kwargs.get("password") or self.password,
         )
         if not self.transport.is_authenticated():
@@ -108,7 +108,7 @@ class SSH(BaseSSH):
                     break
 
                 if "sudo" in output and "password" in output:
-                    self.send(self.password)
+                    self.send(self.password)  # type: ignore
 
         # read again in case that $/# in output
         if output := self.read_buffer(encoding):
@@ -117,14 +117,14 @@ class SSH(BaseSSH):
         return "".join(outputs)
 
     def send(self, cmd: str, end: str = "\n", **kwargs: Any) -> int:
-        sent = self.conn.send(f"{cmd}{end}")
+        sent = self.conn.send(f"{cmd}{end}")  # type: ignore
         time.sleep(0.1)
         return sent
 
     def _download(self, remote: str, local: str | None = None, **kwargs: Any) -> None:
         self.open_sftp()
-        self.sftp.get(remote, local)
+        self.sftp.get(remote, local)  # type: ignore
 
     def _upload(self, local: str, remote: str | None = None, **kwargs: Any) -> None:
         self.open_sftp()
-        self.sftp.put(local, remote)
+        self.sftp.put(local, remote)  # type: ignore
