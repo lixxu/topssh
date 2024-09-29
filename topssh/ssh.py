@@ -59,7 +59,11 @@ class SSH(BaseSSH):
             buffers.append(self.conn.recv(1024))
 
         buf = b"".join(buffers).decode(encoding, "ignore") if buffers else ""
-        return self.append_buffer(buf)
+        text = self.strip_styles(buf)
+        if text:
+            self.append_buffer(text, False)
+
+        return text
 
     def clear_buffer(self) -> None:
         """ignore output"""
@@ -91,9 +95,12 @@ class SSH(BaseSSH):
     def run(self, cmd: str, **kwargs: Any) -> str:
         outputs = []
         self.send(cmd, **kwargs)
+        expect = kwargs.get("expect") or ""
+        expects = [expect] if expect and isinstance(expect, str) else expect
         timeout = kwargs.get("timeout")
         encoding = kwargs.get("encoding", "utf-8")
         start_ts = time.monotonic()
+        expect_captured = False
         while True:
             time.sleep(0.01)
             if self.conn.exit_status_ready():
@@ -105,6 +112,14 @@ class SSH(BaseSSH):
             if output := self.read_buffer(encoding):
                 outputs.append(output)
                 if output.strip().endswith(("$", "#")):
+                    break
+
+                for exp in expects:
+                    if exp in output:
+                        expect_captured = True
+                        break
+
+                if expect_captured:
                     break
 
                 if "sudo" in output and "password" in output:

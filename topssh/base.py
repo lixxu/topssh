@@ -33,8 +33,8 @@ class BaseSSH:
     def strip_styles(cls, text: str) -> str:
         return term.strip(text)
 
-    def append_buffer(self, text: str) -> str:
-        self.echo_text.append(self.strip_styles(text))
+    def append_buffer(self, text: str, need_strip: bool = True) -> str:
+        self.echo_text.append(self.strip_styles(text) if need_strip else text)
         return self.echo_text[-1]
 
     def connect(self, *args: Any, **kwargs: Any) -> None:
