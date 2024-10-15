@@ -34,8 +34,9 @@ class BaseSSH:
         return term.strip(text)
 
     def append_buffer(self, text: str, need_strip: bool = True) -> str:
-        self.echo_text.append(self.strip_styles(text) if need_strip else text)
-        return self.echo_text[-1]
+        clean_text = self.strip_styles(text) if need_strip else text
+        self.echo_text.append(clean_text)
+        return clean_text
 
     def connect(self, *args: Any, **kwargs: Any) -> None:
         return NotImplemented

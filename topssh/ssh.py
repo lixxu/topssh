@@ -31,6 +31,9 @@ class SSH(BaseSSH):
     def is_connected(self) -> bool:
         return self.transport.active if self.transport else False
 
+    def get_bufsize(self, **kwargs: Any) -> int:
+        return kwargs.get("bufsize", self._kwargs.get("bufsize", 1024))
+
     def open_sftp(self) -> paramiko.sftp_client.SFTPClient:
         if not self.sftp:
             self.sftp = self.transport.open_sftp_client()
@@ -52,11 +55,12 @@ class SSH(BaseSSH):
         self.conn.set_combine_stderr(True)
         time.sleep(0.1)
 
-    def read_buffer(self, encoding: str = "utf-8") -> str:
+    def read_buffer(self, encoding: str = "utf-8", bufsize: int = 0) -> str:
         buffers = []
         time.sleep(0.1)
+        bufsize = bufsize or self.get_bufsize()
         while self.conn.recv_ready():
-            buffers.append(self.conn.recv(1024))
+            buffers.append(self.conn.recv(bufsize))
 
         buf = b"".join(buffers).decode(encoding, "ignore") if buffers else ""
         text = self.strip_styles(buf)
@@ -65,11 +69,12 @@ class SSH(BaseSSH):
 
         return text
 
-    def clear_buffer(self) -> None:
+    def clear_buffer(self, bufsize: int = 0) -> None:
         """ignore output"""
         time.sleep(0.1)
+        bufsize = bufsize or self.get_bufsize()
         while self.conn.recv_ready():
-            self.conn.recv(1024)
+            self.conn.recv(bufsize)
 
     def patch_output(self) -> None:
         self.add_timestamp_to_ps1()
@@ -93,23 +98,35 @@ class SSH(BaseSSH):
             self.transport.close()
 
     def run(self, cmd: str, **kwargs: Any) -> str:
-        outputs = []
         self.send(cmd, **kwargs)
+
+        outputs = []
+
+        # capture expect for user input
+        expect_captured = False
         expect = kwargs.get("expect") or ""
         expects = [expect] if expect and isinstance(expect, str) else expect
+
+        last_seen = time.monotonic()  # last active time
         timeout = kwargs.get("timeout")
-        encoding = kwargs.get("encoding", "utf-8")
-        start_ts = time.monotonic()
-        expect_captured = False
+
+        bufsize = self.get_bufsize(**kwargs)
+        encoding = kwargs.get("encoding", self._kwargs.get("encoding", "utf-8"))
+        # for long response
+        soft_timeout = kwargs.get("soft_timeout", self._kwargs.get("soft_timeout", True))
         while True:
             time.sleep(0.01)
             if self.conn.exit_status_ready():
                 break
 
-            if timeout and (time.monotonic() - start_ts) > timeout:
+            if timeout and (time.monotonic() - last_seen) > timeout:
                 break
 
-            if output := self.read_buffer(encoding):
+            if output := self.read_buffer(encoding, bufsize):
+                if soft_timeout:
+                    # connection still alive as can still read buffer
+                    last_seen = time.monotonic()
+
                 outputs.append(output)
                 if output.strip().endswith(("$", "#")):
                     break
@@ -126,7 +143,7 @@ class SSH(BaseSSH):
                     self.send(self.password)  # type: ignore
 
         # read again in case that $/# in output
-        if output := self.read_buffer(encoding):
+        if output := self.read_buffer(encoding, bufsize):
             outputs.append(output)
 
         return "".join(outputs)
@@ -138,8 +155,8 @@ class SSH(BaseSSH):
 
     def _download(self, remote: str, local: str | None = None, **kwargs: Any) -> None:
         self.open_sftp()
-        self.sftp.get(remote, local)  # type: ignore
+        self.sftp.get(remote, local, **kwargs)  # type: ignore
 
     def _upload(self, local: str, remote: str | None = None, **kwargs: Any) -> None:
         self.open_sftp()
-        self.sftp.put(local, remote)  # type: ignore
+        self.sftp.put(local, remote, **kwargs)  # type: ignore
