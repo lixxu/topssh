@@ -76,13 +76,17 @@ class SSH(BaseSSH):
         while self.conn.recv_ready():
             self.conn.recv(bufsize)
 
-    def patch_output(self) -> None:
-        self.add_timestamp_to_ps1()
+    def patch_output(self, **kwargs: Any) -> None:
         self.update_aliases()
+        self.add_timestamp_to_ps1(**kwargs)
 
-    def add_timestamp_to_ps1(self) -> str:
-        self.run("echo add timestamps to prompt")
-        return self.run(r'''PS1="\[[\$(date +'%F %T.%6N')\]] \u@\h:\w$ "''')
+    def add_timestamp_to_ps1(self, **kwargs: Any) -> str:
+        # self.run("echo add timestamps to prompt")
+        cmd = r"""PS1="\[[\$(date +'%F %T.%6N')\]] \u@\h:\w"""
+        if kwargs.get("new_line_prompt", False):
+            cmd += r"\n"
+
+        return self.run(cmd + '$ "')
 
     def update_aliases(self) -> str:
         return self.run("alias ls=ls {0}; alias grep=grep {0}".format("--color=never"))
