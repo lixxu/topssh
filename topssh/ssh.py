@@ -55,30 +55,35 @@ class SSH(BaseSSH):
         self.conn.set_combine_stderr(True)
         time.sleep(0.1)
 
-    def read_buffer(self, encoding: str = "utf-8", bufsize: int = 0) -> str:
+    def fetch_buffer(self, bufsize: int = 0) -> list:
         buffers = []
         time.sleep(0.1)
         bufsize = bufsize or self.get_bufsize()
         while self.conn.recv_ready():
+            time.sleep(0.01)
             buffers.append(self.conn.recv(bufsize))
 
+        return buffers
+
+    def read_buffer(self, encoding: str = "utf-8", bufsize: int = 0) -> str:
+        buffers = self.fetch_buffer(bufsize)
         buf = b"".join(buffers).decode(encoding, "ignore") if buffers else ""
-        text = self.strip_styles(buf)
-        if text:
+        if text := self.strip_styles(buf):
             self.append_buffer(text, False)
 
         return text
 
     def clear_buffer(self, bufsize: int = 0) -> None:
         """ignore output"""
-        time.sleep(0.1)
-        bufsize = bufsize or self.get_bufsize()
-        while self.conn.recv_ready():
-            self.conn.recv(bufsize)
+        self.fetch_buffer(bufsize)
 
     def patch_output(self, **kwargs: Any) -> None:
-        self.update_aliases()
         self.add_timestamp_to_ps1(**kwargs)
+        self.update_aliases()
+
+    def show_system_info(self) -> None:
+        cmds = ["who am i", "ip a", "uptime", "df -h", "uname -a"]
+        self.run("; echo && ".join(cmds))
 
     def add_timestamp_to_ps1(self, **kwargs: Any) -> str:
         # self.run("echo add timestamps to prompt")
@@ -100,6 +105,19 @@ class SSH(BaseSSH):
 
         if self.transport:
             self.transport.close()
+
+    def safe_close(self) -> None:
+        """close without exception"""
+        try:
+            self.close()
+        except Exception:
+            pass
+
+    def send_ignore(self) -> None:
+        self.transport.send_ignore()
+
+    def set_keepalive(self, interval: int = 0) -> None:
+        self.transport.set_keepalive(interval)
 
     def run(self, cmd: str, **kwargs: Any) -> str:
         self.send(cmd, **kwargs)

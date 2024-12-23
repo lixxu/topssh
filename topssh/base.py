@@ -68,7 +68,7 @@ class BaseSSH:
     def _upload(self, *args: Any, **kwargs: Any) -> None:
         pass
 
-    def get(self, remote: str, local: str | None = None, **kwargs: Any) -> None:
+    def get(self, remote: str, local: str = "", **kwargs: Any) -> None:
         if local and Path(local).is_dir():
             local = f"{local}/{remote.rsplit('/')[-1]}"
 
@@ -77,7 +77,7 @@ class BaseSSH:
     def put(
         self,
         local: str,
-        remote: str | None = None,
+        remote: str = "",
         target_is_dir: bool = True,
         **kwargs: Any,
     ) -> None:
