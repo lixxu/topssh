@@ -80,9 +80,13 @@ class SSH(BaseSSH):
     def patch_output(self, **kwargs: Any) -> None:
         self.add_timestamp_to_ps1(**kwargs)
         self.update_aliases()
+        self.set_encoding()
+
+    def set_encoding(self) -> None:
+        return self.run("export LC_ALL=C.UTF-8")
 
     def show_system_info(self) -> None:
-        cmds = ["who am i", "ip a", "uptime", "df -h", "uname -a"]
+        cmds = ["who am i", "ip a", "uptime", "df -h", "uname -a", "cat /etc/*release"]
         self.run("; echo && ".join(cmds))
 
     def add_timestamp_to_ps1(self, **kwargs: Any) -> str:
