@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding=utf-8 -*-
 
+from pathlib import Path
 from typing import Any
 
 import paramiko
@@ -12,8 +13,8 @@ class SFTP:
     ) -> None:
         self.host = host
         self.user = user
-        self.password = password
         self.port = port
+        self.password = password
         self.kw = kwargs.copy()
 
     def connect(self, **kwargs: Any) -> None:
@@ -38,17 +39,21 @@ class SFTP:
         """
         return getattr(self.sftp, name)
 
-    def walkfiles(self, root_dir: str = "/") -> tuple:
-        dirs, files = [], []
-        for fd in self.listdir(root_dir):
-            full_path = f"{root_dir}/{fd}"
-            st = str(self.sftp.stat(full_path))
-            if st.startswith("d"):  # a folder
-                dirs.append(full_path)
-                dirs_, files_ = self.walkfiles(dirs[-1])
-                dirs.extend(dirs_)
-                files.extend(files_)
-            else:
-                files.append(full_path)
+    def walkfiles(self, root_dir: str = "/", max_depth: int = 0) -> tuple:
+        def walking(top_dir: str) -> tuple:
+            dirs, files = [], []
+            for fd in self.listdir(top_dir):
+                path = f"{top_dir}/{fd}"
+                if str(self.sftp.stat(path)).startswith("d"):  # a folder
+                    p = Path(path.removeprefix(root_dir).removeprefix("/"))
+                    if not (max_depth and len(p.parts) > max_depth):
+                        dirs_, files_ = walking(path)
+                        dirs.extend([path] + dirs_)
+                        files.extend(files_)
 
-        return dirs, files
+                else:
+                    files.append(path)
+
+            return dirs, files
+
+        return walking(root_dir)
