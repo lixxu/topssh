@@ -1,25 +1,21 @@
 [project]
 name = "topssh"
-authors = [{name="Lix Xu", email="xuzenglin@gmail.com"}]
+authors = [{ name = "Lix Xu", email = "xuzenglin@gmail.com" }]
 description = "a package on top of fabric to use SSH easily"
 readme = "README.md"
 requires-python = ">=3.8"
-license = {file = "LICENSE.txt"}
 keywords = ["ssh", "fabric", "paramiko"]
+license-files = ["LICENSE.txt"]
 classifiers = [
-    "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: BSD License",
+    "Intended Audience :: Developers",
     "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Development Status :: 5 - Production/Stable",
 ]
-dependencies = [
-    "fabric>=3.2.2",
-    "py-term>=0.7"
-]
-dynamic = [
-    "version",
-]
+dependencies = ["fabric>=3.2.2", "py-term>=0.7"]
+dynamic = ["version"]
 [tool.setuptools.dynamic]
-version = {attr = "topssh.__version__"}
+version = { attr = "topssh.__version__" }
 
 [project.urls]
 "Homepage" = "https://github.com/lixxu/topssh"
