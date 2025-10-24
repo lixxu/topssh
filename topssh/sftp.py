@@ -39,6 +39,10 @@ class SFTP:
         """
         return getattr(self.sftp, name)
 
+    @classmethod
+    def get_remote_path(cls, path: str) -> str:
+        return f"/{path}".replace("//", "/").replace("//", "/")
+
     def walkfiles(self, root_dir: str = "/", max_depth: int = 0) -> tuple:
         def walking(top_dir: str) -> tuple:
             dirs, files = [], []
@@ -57,3 +61,12 @@ class SFTP:
             return dirs, files
 
         return walking(root_dir)
+
+    def upload_files(self, local_files: list, remote_dir: str = "/", filename_maps: dict = {}) -> None:
+        for local_file in local_files:
+            filename = Path(local_file).name
+            remote_file = f"{remote_dir}/{filename_maps.get(filename, filename)}"
+            self.put(local_file, self.get_remote_path(remote_file))
+
+    def get_size(self, remote_file: str) -> int:
+        return self.stat(remote_file).st_size
